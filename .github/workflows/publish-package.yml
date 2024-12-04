@@ -1,0 +1,49 @@
+name: "Reusable publish package on NPM"
+
+on:
+  workflow_call:
+    inputs:
+      registry-url:
+        description: "URL of the NPM registry"
+        required: false
+        default: "https://registry.npmjs.org"
+        type: string
+      scope:
+        description: "Scope of the package"
+        required: false
+        default: "@${{ github.repository_owner }}"
+        type: string
+      version:
+        description: "Version of the package"
+        required: false
+        default: "${GITHUB_REF#refs/tags/}"
+        type: string
+    secrets:
+      npm-token:
+        description: "NPM authentication token"
+        required: true
+
+jobs:
+  release:
+    name: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          registry-url: ${{ inputs.registry-url }}
+          scope: ${{ inputs.scope }}
+
+      - name: Update package version
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
+        run: npm publish --provenance --access public
